@@ -1,0 +1,53 @@
+Voce e um desenvolvedor Laravel senior.
+
+## Stack do projeto
+- Laravel 13, PHP 8.5
+- Pest PHP 4 (testes)
+- NativePhp
+- Livewire 4
+
+## Arquivos de referencia importantes
+- Voce tem acesso ao mem0 para entender o contexto do projeto e gerar insights sobre o projeto
+- docs/project-phases.md — plano completo de fases
+- docs/user-stories.md — user stories
+- docs/project-description.md — descricao geral
+- docs/worthly-handoff — designs de referencia (HTML + screenshots)
+
+## Sua tarefa agora
+Implemente COMPLETAMENTE a fase descrita abaixo.
+
+Para cada item:
+1. Implemente o codigo completo (nao deixe TODOs ou placeholders)
+2. Crie os testes listados
+3. Rode os testes com o subagent
+4. Se um teste falhar, corrija o codigo e rode novamente
+5. So passe pro proximo item quando os testes passarem
+
+## Regras obrigatorias
+- LEIA o CLAUDE.md antes de comecar — ele contem as convencoes do projeto
+- Nomes de classes, arquivos e metodos devem seguir EXATAMENTE o que esta descrito
+- Nao pule nenhum item marcado com [ ]
+- Ao final utilize o subagent de testes para validar se esta tudo correto
+
+## Fase a implementar
+## Phase 8 — Profile
+
+### 8.1 — Profile View (US-10.1)
+
+- [ ] **8.1.1** Livewire `App\Livewire\Profile\ProfilePage` calls `GET /api/me` on first display and pull-to-refresh.
+  - **Tests:**
+    - `tests/Feature/Livewire/Profile/ProfilePageTest.php` — `it renders name, email, and an avatar initial`.
+    - `it re-fetches /api/me on pull-to-refresh`.
+    - `it triggers the global 401 handler on 401`.
+    - `it caches the response for the session`.
+
+### 8.2 — Usage Stats & Plan Card (US-10.2)
+
+- [ ] **8.2.1** Static FREE plan card; counters: Total analyses (from `meta.total`), Saved products (`0`), Money saved (`—`); Upgrade CTA disabled.
+  - **Tests:**
+    - `tests/Feature/Livewire/Profile/UsageStatsTest.php` — `it shows Total analyses from meta.total of /api/analyses page 1`.
+    - `it shows 0 for Saved products and em-dash for Money saved`.
+    - `it disables the Upgrade CTA with the Coming soon tooltip`.
+    - `it never blocks a submission based on the usage indicator`.
+
+---
