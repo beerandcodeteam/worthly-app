@@ -1,0 +1,50 @@
+{
+  "enabledPlugins": { "mem0@mem0-plugins": true },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/log-event.sh" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/pint-and-test.sh" }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/log-event.sh" }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/notify-n8n.sh" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/notify-n8n.sh" },
+          { "type": "command", "command": ".claude/hooks/log-event.sh" },
+          { "type": "command", "command": ".claude/hooks/log-tokens.sh" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/log-event.sh" }
+        ]
+      }
+    ]
+  }
+}

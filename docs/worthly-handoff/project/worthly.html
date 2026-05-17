@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Worthly — iOS prototype</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --w-cream: #F2EFE6;
+      --w-cream-2: #ECE8DC;
+      --w-paper: #FFFFFF;
+      --w-ink: #14130F;
+      --w-ink-2: #2A2823;
+      --w-muted: #6E6B61;
+      --w-muted-2: #9C9A90;
+      --w-line: rgba(20,19,15,0.08);
+      --w-line-2: rgba(20,19,15,0.14);
+      --w-buy: #1B7A3F;
+      --w-buy-soft: #DDEBDF;
+      --w-wait: #B26D12;
+      --w-wait-soft: #F2E4CB;
+      --w-skip: #A8392C;
+      --w-skip-soft: #F1D9D3;
+      --w-accent: var(--w-ink);
+      --w-radius: 14px;
+      --font-ui: "Geist", -apple-system, system-ui, sans-serif;
+      --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+      --font-display: "Instrument Serif", "Times New Roman", serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+      font-family: var(--font-ui);
+      color: var(--w-ink);
+      background:
+        radial-gradient(1200px 800px at 50% -10%, #F8F5EC 0%, #EFEBE0 60%, #E7E3D6 100%);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    /* Subtle grid texture behind device */
+    body::before {
+      content: "";
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(20,19,15,0.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(20,19,15,0.035) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    #root { position: relative; z-index: 1; }
+    .stage {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      gap: 64px;
+    }
+    .stage-side {
+      max-width: 320px;
+      align-self: flex-start;
+      padding-top: 60px;
+    }
+    .stage-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--w-muted);
+      margin-bottom: 14px;
+    }
+    .stage-mark {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 56px;
+      line-height: 1;
+      letter-spacing: -0.01em;
+      color: var(--w-ink);
+      margin: 0 0 18px;
+    }
+    .stage-desc {
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--w-muted);
+      margin: 0 0 28px;
+    }
+    .stage-nav {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2px;
+      border-top: 1px solid var(--w-line);
+    }
+    .stage-nav button {
+      appearance: none;
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid var(--w-line);
+      padding: 12px 0;
+      text-align: left;
+      cursor: pointer;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      color: var(--w-ink);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: color 120ms;
+    }
+    .stage-nav button .num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--w-muted-2);
+      font-variant-numeric: tabular-nums;
+    }
+    .stage-nav button:hover { color: var(--w-buy); }
+    .stage-nav button.active { color: var(--w-buy); }
+    .stage-nav button.active .num { color: var(--w-buy); }
+    @media (max-width: 900px) {
+      .stage { flex-direction: column; gap: 24px; padding: 24px; }
+      .stage-side { padding-top: 0; align-self: stretch; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="worthly-data.jsx"></script>
+  <script type="text/babel" src="worthly-ui.jsx"></script>
+  <script type="text/babel" src="worthly-screens.jsx"></script>
+  <script type="text/babel" src="worthly-app.jsx"></script>
+</body>
+</html>
