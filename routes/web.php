@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\SessionRestoreController;
+use App\Livewire\Analyze\Composer;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
 use App\Livewire\Home\HomePage;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', SessionRestoreController::class)->name('session.restore');
 
 Route::get('/home', HomePage::class)->name('home');
+
+Route::get('/analyze', Composer::class)->name('analyze');
 
 Route::get('/analyses/{analysis}', function (string $analysis) {
     return view('placeholder.analysis-show', ['analysis' => $analysis]);
