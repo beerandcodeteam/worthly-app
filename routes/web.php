@@ -4,6 +4,7 @@ use App\Http\Controllers\SessionRestoreController;
 use App\Livewire\Analyze\Composer;
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
+use App\Livewire\History\HistoryPage;
 use App\Livewire\Home\HomePage;
 use App\Livewire\Onboarding\Carousel;
 use App\Livewire\Result\OffersPage;
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', SessionRestoreController::class)->name('session.restore');
 
 Route::get('/home', HomePage::class)->name('home');
+
+Route::get('/history', HistoryPage::class)->name('history');
 
 Route::get('/analyze', Composer::class)->name('analyze');
 
