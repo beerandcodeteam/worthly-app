@@ -13,7 +13,7 @@
 #   ./ralph.sh                          # default: codex
 #   ./ralph.sh --engine claude          # usa Claude Code
 #   ./ralph.sh --engine codex docs/project-phases.md
-#   ./ralph.sh --start-at 5             # comeca da fase 5 (marca 1..4 como done)
+#   ./ralph.sh --start-at 6             # comeca da "Phase 6" (marca fases com numero < 6 como done)
 #
 # Pre-requisitos:
 #   - Codex: npm install -g @openai/codex + OPENAI_API_KEY
@@ -58,8 +58,8 @@ if [[ "$ENGINE" != "codex" && "$ENGINE" != "claude" ]]; then
   exit 1
 fi
 
-if [ -n "$START_AT" ] && ! [[ "$START_AT" =~ ^[1-9][0-9]*$ ]]; then
-  echo "Valor invalido para --start-at: '$START_AT'. Use um inteiro positivo (ex: --start-at 5)."
+if [ -n "$START_AT" ] && ! [[ "$START_AT" =~ ^(0|[1-9][0-9]*)$ ]]; then
+  echo "Valor invalido para --start-at: '$START_AT'. Use um inteiro nao-negativo (ex: --start-at 6)."
   exit 1
 fi
 PHASES_DIR=".phases"
@@ -169,20 +169,31 @@ split_phases() {
   success "$phase_count fases extraidas"
 
   if [ -n "$START_AT" ]; then
-    if [ "$START_AT" -gt "$phase_count" ]; then
-      fail "--start-at $START_AT excede o total de fases ($phase_count)."
+    > "$PROGRESS_FILE"
+    local skipped=0
+    local found_target=false
+    while IFS="|" read -r file title; do
+      local phase_num
+      phase_num=$(echo "$title" | sed -nE 's/^Phase[[:space:]]+([0-9]+).*/\1/p')
+
+      if [ -z "$phase_num" ]; then
+        continue
+      fi
+
+      if [ "$phase_num" -lt "$START_AT" ]; then
+        echo "$file" >> "$PROGRESS_FILE"
+        skipped=$((skipped + 1))
+      else
+        found_target=true
+      fi
+    done < "$MANIFEST"
+
+    if ! $found_target; then
+      fail "--start-at $START_AT nao encontrou nenhuma fase com numero >= $START_AT."
       exit 1
     fi
 
-    > "$PROGRESS_FILE"
-    local skipped=0
-    while IFS="|" read -r file title; do
-      skipped=$((skipped + 1))
-      [ $skipped -ge "$START_AT" ] && break
-      echo "$file" >> "$PROGRESS_FILE"
-    done < "$MANIFEST"
-
-    success "Pulando fases 1..$((START_AT - 1)) (marcadas como done). Comecando na fase $START_AT."
+    success "Pulando $skipped fase(s) com numero < $START_AT (marcadas como done). Comecando na Phase $START_AT."
   fi
 }
 
