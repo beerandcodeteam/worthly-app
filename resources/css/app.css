@@ -5,7 +5,103 @@
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+/* ------------------------------------------------------------------
+ | Worthly design tokens
+ | Source: docs/worthly-handoff/project/worthly.html
+ ------------------------------------------------------------------ */
+:root {
+    --w-cream: #F2EFE6;
+    --w-cream-2: #ECE8DC;
+    --w-paper: #FFFFFF;
+    --w-ink: #14130F;
+    --w-ink-2: #2A2823;
+    --w-muted: #6E6B61;
+    --w-muted-2: #9C9A90;
+    --w-line: rgba(20, 19, 15, 0.08);
+    --w-line-2: rgba(20, 19, 15, 0.14);
+    --w-buy: #1B7A3F;
+    --w-buy-soft: #DDEBDF;
+    --w-wait: #B26D12;
+    --w-wait-soft: #F2E4CB;
+    --w-skip: #A8392C;
+    --w-skip-soft: #F1D9D3;
+    --w-accent: var(--w-ink);
+    --w-radius: 14px;
+    --font-ui: 'Geist', -apple-system, system-ui, sans-serif;
+    --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+    --font-display: 'Instrument Serif', 'Times New Roman', serif;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body {
+    font-family: var(--font-ui);
+    color: var(--w-ink);
+    background: var(--w-cream);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* ------------------------------------------------------------------
+ | Tailwind 4 theme — surface Worthly tokens as utilities
+ | Use `bg-w-buy`, `text-w-ink`, `border-w-line`, `font-display`, etc.
+ ------------------------------------------------------------------ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Geist', -apple-system, system-ui, sans-serif;
+    --font-ui: 'Geist', -apple-system, system-ui, sans-serif;
+    --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+    --font-display: 'Instrument Serif', 'Times New Roman', serif;
+
+    --color-w-cream: #F2EFE6;
+    --color-w-cream-2: #ECE8DC;
+    --color-w-paper: #FFFFFF;
+    --color-w-ink: #14130F;
+    --color-w-ink-2: #2A2823;
+    --color-w-muted: #6E6B61;
+    --color-w-muted-2: #9C9A90;
+    --color-w-line: rgba(20, 19, 15, 0.08);
+    --color-w-line-2: rgba(20, 19, 15, 0.14);
+    --color-w-buy: #1B7A3F;
+    --color-w-buy-soft: #DDEBDF;
+    --color-w-wait: #B26D12;
+    --color-w-wait-soft: #F2E4CB;
+    --color-w-skip: #A8392C;
+    --color-w-skip-soft: #F1D9D3;
+
+    --radius-w: 14px;
+}
+
+/* ------------------------------------------------------------------
+ | Utility classes used by the UI primitives
+ ------------------------------------------------------------------ */
+.font-display {
+    font-family: var(--font-display);
+}
+
+.font-mono {
+    font-family: var(--font-mono);
+}
+
+.font-ui {
+    font-family: var(--font-ui);
+}
+
+.tabular-nums {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Hide horizontal scrollbar on suggestion strips */
+.no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
 }
