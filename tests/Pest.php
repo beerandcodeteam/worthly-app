@@ -1,6 +1,11 @@
 <?php
 
+use App\Contracts\SecureTokenStorage;
+use App\Models\User;
+use App\Support\Storage\InMemorySecureTokenStorage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /*
@@ -44,7 +49,64 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function fakeWorthlyApi(array $responses = []): HttpFactory
 {
-    // ..
+    $fake = Http::fake($responses);
+
+    app()->instance(SecureTokenStorage::class, new InMemorySecureTokenStorage);
+
+    return $fake;
+}
+
+function actingAsWorthlyUser(?User $user = null, string $token = 'test-worthly-token'): User
+{
+    $user ??= User::factory()->create();
+
+    $storage = app(SecureTokenStorage::class);
+
+    if (! $storage instanceof InMemorySecureTokenStorage) {
+        $storage = new InMemorySecureTokenStorage;
+        app()->instance(SecureTokenStorage::class, $storage);
+    }
+
+    $storage->put($token);
+
+    test()->actingAs($user);
+
+    return $user;
+}
+
+function worthlyAnalysisPayload(array $overrides = []): array
+{
+    $defaults = [
+        'id' => 42,
+        'product' => [
+            'name' => 'Logitech MX Master 3S',
+            'category' => 'Wireless mouse',
+            'estimated_price_range' => '$80 - $110',
+        ],
+        'summary' => 'The Logitech MX Master 3S is a premium wireless mouse focused on productivity, comfort, and precision.',
+        'similar_products' => [
+            [
+                'name' => 'Logitech MX Master 2S',
+                'reason' => 'Older model with lower price and similar productivity features.',
+                'price_reference' => '$60 - $80',
+            ],
+            [
+                'name' => 'Razer Pro Click',
+                'reason' => 'Alternative focused on ergonomics and professional use.',
+                'price_reference' => '$80 - $100',
+            ],
+        ],
+        'cost_benefit_analysis' => 'The MX Master 3S is worth it if the user values ergonomics, silent clicks, and productivity features.',
+        'recommendation' => [
+            'decision' => 'buy_if_price_is_good',
+            'reason' => 'Strong product, but the best decision depends on the current price compared to alternatives.',
+        ],
+        'input_type' => 'text',
+        'image_url' => null,
+        'created_at' => '2026-05-14T10:30:00Z',
+    ];
+
+    return ['data' => array_replace_recursive($defaults, $overrides)];
 }

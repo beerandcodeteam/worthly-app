@@ -1,0 +1,11 @@
+phase-00-foundations-tooling.md|Phase 0 — Foundations & Tooling
+phase-01-frontend-foundations-design-system-no-tests-required.md|Phase 1 — Frontend Foundations & Design System (no tests required)
+phase-02-authentication.md|Phase 2 — Authentication
+phase-03-home-screen.md|Phase 3 — Home Screen
+phase-04-product-analysis-submission.md|Phase 4 — Product Analysis Submission
+phase-05-result-screen-drill-ins.md|Phase 5 — Result Screen & Drill-Ins
+phase-06-image-analyses.md|Phase 6 — Image Analyses
+phase-07-analysis-history.md|Phase 7 — Analysis History
+phase-08-profile.md|Phase 8 — Profile
+phase-09-cross-cutting-error-handling.md|Phase 9 — Cross-Cutting Error Handling
+phase-10-mobile-integration-hardening.md|Phase 10 — Mobile Integration & Hardening

@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'worthly' => [
+        'base_url' => env('WORTHLY_API_URL', 'https://api.worthly.app'),
+        'timeout' => (int) env('WORTHLY_API_TIMEOUT', 30),
+        'image_max_kb' => (int) env('WORTHLY_API_IMAGE_MAX_KB', 8192),
+    ],
+
 ];
