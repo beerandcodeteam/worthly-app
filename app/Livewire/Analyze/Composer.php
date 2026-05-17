@@ -54,12 +54,25 @@ class Composer extends Component
 
     public bool $upstreamError = false;
 
+    public bool $autoSubmit = false;
+
     public function mount(SecureTokenStorage $tokens): mixed
     {
         $token = $tokens->get();
 
         if ($token === null || $token === '') {
             return $this->redirectRoute('login', navigate: false);
+        }
+
+        $prefill = trim((string) request()->query('q', ''));
+
+        if ($prefill !== '') {
+            $this->query = mb_substr($prefill, 0, self::MAX_QUERY_LENGTH);
+        }
+
+        if ((string) request()->query('autostart') === '1' && trim($this->query) !== '') {
+            $this->autoSubmit = true;
+            $this->submitting = true;
         }
 
         return null;
@@ -147,6 +160,25 @@ class Composer extends Component
 
         $this->submitting = true;
 
+        return $this->performAnalysisCall($api, $tokens);
+    }
+
+    public function runAutoSubmit(WorthlyApiClient $api, SecureTokenStorage $tokens): mixed
+    {
+        if (! $this->autoSubmit) {
+            return null;
+        }
+
+        $this->autoSubmit = false;
+        $this->resetErrorBag();
+        $this->upstreamError = false;
+        $this->submitting = true;
+
+        return $this->performAnalysisCall($api, $tokens);
+    }
+
+    private function performAnalysisCall(WorthlyApiClient $api, SecureTokenStorage $tokens): mixed
+    {
         try {
             if ($this->image instanceof UploadedFile) {
                 $data = $this->postImage($api);

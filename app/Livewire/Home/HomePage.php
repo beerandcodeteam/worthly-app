@@ -3,6 +3,7 @@
 namespace App\Livewire\Home;
 
 use App\Contracts\SecureTokenStorage;
+use App\Livewire\Analyze\Composer;
 use App\Services\Worthly\Exceptions\NotFoundException;
 use App\Services\Worthly\Exceptions\UnauthorizedException;
 use App\Services\Worthly\WorthlyApiClient;
@@ -73,6 +74,24 @@ class HomePage extends Component
     public function prefillSuggestion(string $suggestion): void
     {
         $this->composer = $suggestion;
+    }
+
+    public function submit(): mixed
+    {
+        $query = trim($this->composer);
+
+        if ($query === '') {
+            return null;
+        }
+
+        if (mb_strlen($query) > Composer::MAX_QUERY_LENGTH) {
+            $query = mb_substr($query, 0, Composer::MAX_QUERY_LENGTH);
+        }
+
+        return $this->redirectRoute('analyze', [
+            'q' => $query,
+            'autostart' => 1,
+        ], navigate: true);
     }
 
     public function clearToast(): void

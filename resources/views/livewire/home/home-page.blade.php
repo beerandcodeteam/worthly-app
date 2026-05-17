@@ -53,7 +53,8 @@
 
     {{-- Composer --}}
     <div style="padding:0 18px;margin-bottom:12px;">
-        <div
+        <form
+            wire:submit.prevent="submit"
             data-testid="composer"
             style="background:var(--w-paper);border:0.5px solid var(--w-line-2);border-radius:18px;padding:14px 14px 12px;"
         >
@@ -68,18 +69,20 @@
 
             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
                 <div style="display:flex;gap:6px;">
-                    <button
-                        type="button"
+                    <a
+                        href="{{ route('analyze') }}"
+                        wire:navigate
                         data-testid="composer-camera"
-                        style="appearance:none;border:0.5px solid var(--w-line);background:transparent;border-radius:999px;height:32px;width:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--w-ink-2);"
+                        aria-label="Add image"
+                        style="appearance:none;border:0.5px solid var(--w-line);background:transparent;border-radius:999px;height:32px;width:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--w-ink-2);text-decoration:none;"
                     >
                         <x-ui.icon name="camera" :size="16" />
-                    </button>
+                    </a>
                 </div>
 
                 @php $hasComposerContent = trim((string) $composer) !== ''; @endphp
                 <button
-                    type="button"
+                    type="submit"
                     data-testid="composer-ask"
                     @disabled(! $hasComposerContent)
                     aria-disabled="{{ $hasComposerContent ? 'false' : 'true' }}"
@@ -88,7 +91,7 @@
                     <x-ui.icon name="arrow-right" :size="16" />
                 </button>
             </div>
-        </div>
+        </form>
     </div>
 
     {{-- Suggestion chips --}}

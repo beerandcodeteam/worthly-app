@@ -211,6 +211,26 @@ it('enables the Ask CTA once the composer has content', function () {
     expect($component->html())->toContain('aria-disabled="false"');
 });
 
+it('redirects to /analyze with q + autostart when the Ask button is submitted', function () {
+    authenticateWorthly();
+    fakeRecentAnalysesResponse(0);
+
+    Livewire::test(HomePage::class)
+        ->set('composer', 'Sony WH-1000XM5')
+        ->call('submit')
+        ->assertRedirect(route('analyze', ['q' => 'Sony WH-1000XM5', 'autostart' => 1]));
+});
+
+it('does nothing when submit is called with an empty composer', function () {
+    authenticateWorthly();
+    fakeRecentAnalysesResponse(0);
+
+    Livewire::test(HomePage::class)
+        ->set('composer', '   ')
+        ->call('submit')
+        ->assertNoRedirect();
+});
+
 it('does not auto-submit the suggestion', function () {
     authenticateWorthly();
     fakeRecentAnalysesResponse(0);

@@ -93,6 +93,52 @@ it('shows the 502 error screen on upstream failure and keeps the input', functio
         ->assertNoRedirect();
 });
 
+it('prefills the query from ?q= and renders the loader when ?autostart=1', function () {
+    authenticateAnalyzeUser();
+
+    $component = Livewire::withQueryParams(['q' => 'Sony WH-1000XM5', 'autostart' => '1'])
+        ->test(Composer::class)
+        ->assertSet('query', 'Sony WH-1000XM5')
+        ->assertSet('autoSubmit', true)
+        ->assertSet('submitting', true);
+
+    expect($component->html())
+        ->toContain('data-testid="analyzing-loader"')
+        ->toContain('wire:init="runAutoSubmit"');
+});
+
+it('runAutoSubmit fires the API call once and redirects on 201', function () {
+    authenticateAnalyzeUser();
+
+    Http::fake([
+        'api.worthly.test/api/analyses' => Http::response(worthlyAnalysisPayload(['id' => 77]), 201),
+    ]);
+
+    Livewire::withQueryParams(['q' => 'Kindle Paperwhite', 'autostart' => '1'])
+        ->test(Composer::class)
+        ->assertSet('autoSubmit', true)
+        ->call('runAutoSubmit')
+        ->assertSet('autoSubmit', false)
+        ->assertRedirect(route('analyses.show', ['analysis' => 77]));
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://api.worthly.test/api/analyses'
+        && ($request->data()['query'] ?? null) === 'Kindle Paperwhite');
+});
+
+it('runAutoSubmit is a no-op when the autoSubmit flag is false', function () {
+    authenticateAnalyzeUser();
+
+    Http::fake();
+
+    Livewire::test(Composer::class)
+        ->set('query', 'Apple AirPods Pro 2')
+        ->call('runAutoSubmit')
+        ->assertNoRedirect()
+        ->assertSet('submitting', false);
+
+    Http::assertNothingSent();
+});
+
 it('triggers the global 401 handler on 401', function () {
     authenticateAnalyzeUser();
 

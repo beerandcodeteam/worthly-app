@@ -1,5 +1,6 @@
 <div
     data-testid="analyze-screen"
+    @if ($autoSubmit) wire:init="runAutoSubmit" @endif
     style="display:flex;flex-direction:column;flex:1;background:var(--w-cream);min-height:100vh;"
 >
     @if ($upstreamError)
