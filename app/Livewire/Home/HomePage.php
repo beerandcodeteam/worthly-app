@@ -6,15 +6,24 @@ use App\Contracts\SecureTokenStorage;
 use App\Livewire\Analyze\Composer;
 use App\Services\Worthly\Exceptions\NotFoundException;
 use App\Services\Worthly\Exceptions\UnauthorizedException;
+use App\Services\Worthly\Exceptions\UpstreamFailureException;
+use App\Services\Worthly\Exceptions\ValidationException;
+use App\Services\Worthly\Exceptions\WorthlyApiException;
 use App\Services\Worthly\WorthlyApiClient;
 use App\Support\Verdict;
+use Illuminate\Http\Client\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 class HomePage extends Component
 {
+    use WithFileUploads;
+
     public const RECENT_LIMIT = 3;
 
     public const FREE_PLAN_QUOTA = 50;
@@ -30,6 +39,14 @@ class HomePage extends Component
     ];
 
     public string $composer = '';
+
+    public ?TemporaryUploadedFile $image = null;
+
+    public bool $submitting = false;
+
+    public bool $upstreamError = false;
+
+    public bool $autoSubmit = false;
 
     public ?string $toast = null;
 
@@ -76,8 +93,84 @@ class HomePage extends Component
         $this->composer = $suggestion;
     }
 
+    public function updatedImage(): void
+    {
+        $this->resetErrorBag('image');
+
+        if (! $this->image instanceof UploadedFile) {
+            return;
+        }
+
+        $extension = strtolower((string) $this->image->getClientOriginalExtension());
+        $clientMime = strtolower((string) $this->image->getClientMimeType());
+
+        $extensionAllowed = in_array($extension, Composer::ALLOWED_IMAGE_EXTENSIONS, true);
+        $mimeAllowed = in_array($clientMime, Composer::ALLOWED_IMAGE_MIMES, true);
+
+        if (! $extensionAllowed && ! $mimeAllowed) {
+            $this->addError('image', 'The image must be a file of type: jpeg, png, webp.');
+            $this->image = null;
+
+            return;
+        }
+
+        $sizeKb = (int) ceil($this->image->getSize() / 1024);
+
+        if ($sizeKb > Composer::MAX_IMAGE_KB) {
+            $this->addError('image', 'The image may not be larger than 8 MB.');
+            $this->image = null;
+        }
+    }
+
+    public function removeImage(): void
+    {
+        $this->image = null;
+        $this->resetErrorBag('image');
+    }
+
+    public function hasBothInputs(): bool
+    {
+        return $this->image !== null && trim($this->composer) !== '';
+    }
+
+    public function canSubmit(): bool
+    {
+        if ($this->submitting) {
+            return false;
+        }
+
+        if ($this->hasBothInputs()) {
+            return false;
+        }
+
+        if ($this->image !== null) {
+            return true;
+        }
+
+        return trim($this->composer) !== '';
+    }
+
+    public function dismissUpstreamError(): void
+    {
+        $this->upstreamError = false;
+    }
+
     public function submit(): mixed
     {
+        $this->resetErrorBag();
+        $this->upstreamError = false;
+
+        if (! $this->canSubmit()) {
+            return null;
+        }
+
+        if ($this->image !== null) {
+            $this->submitting = true;
+            $this->autoSubmit = true;
+
+            return null;
+        }
+
         $query = trim($this->composer);
 
         if ($query === '') {
@@ -92,6 +185,23 @@ class HomePage extends Component
             'q' => $query,
             'autostart' => 1,
         ], navigate: true);
+    }
+
+    public function runImageAnalysis(WorthlyApiClient $api, SecureTokenStorage $tokens): mixed
+    {
+        if (! $this->autoSubmit) {
+            return null;
+        }
+
+        $this->autoSubmit = false;
+
+        if ($this->image === null) {
+            $this->submitting = false;
+
+            return null;
+        }
+
+        return $this->performImageAnalysis($api, $tokens);
     }
 
     public function clearToast(): void
@@ -130,6 +240,14 @@ class HomePage extends Component
         return self::SUGGESTIONS;
     }
 
+    /**
+     * @return list<string>
+     */
+    public function steps(): array
+    {
+        return Composer::STEP_LABELS;
+    }
+
     public function planUsageLabel(): string
     {
         return sprintf('%d / %d', $this->totalAnalyses, self::FREE_PLAN_QUOTA);
@@ -162,6 +280,112 @@ class HomePage extends Component
                 'relative' => $this->relativeTimestamp((string) ($analysis['created_at'] ?? '')),
             ];
         }, $this->recentAnalyses);
+    }
+
+    private function performImageAnalysis(WorthlyApiClient $api, SecureTokenStorage $tokens): mixed
+    {
+        try {
+            $data = $this->postImage($api);
+        } catch (ValidationException $exception) {
+            $this->submitting = false;
+
+            foreach ($exception->errors() as $field => $messages) {
+                if (is_array($messages) && isset($messages[0])) {
+                    $this->addError($field, (string) $messages[0]);
+                }
+            }
+
+            return null;
+        } catch (UpstreamFailureException) {
+            $this->submitting = false;
+            $this->upstreamError = true;
+
+            return null;
+        } catch (UnauthorizedException) {
+            return $this->handleSessionExpired($tokens);
+        }
+
+        $id = (int) ($data['id'] ?? 0);
+
+        if ($id > 0) {
+            Cache::put('analyses.'.$id, $data);
+        }
+
+        $this->submitting = false;
+
+        if ($id <= 0) {
+            $this->upstreamError = true;
+
+            return null;
+        }
+
+        return $this->redirectRoute('analyses.show', ['analysis' => $id], navigate: true);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function postImage(WorthlyApiClient $api): array
+    {
+        $request = $api->pendingRequest()
+            ->attach(
+                'image',
+                file_get_contents($this->image->getRealPath()),
+                $this->image->getClientOriginalName(),
+            );
+
+        $response = $request->post(
+            $this->resolveUrl('/api/analyses'),
+            ['input_type' => 'image'],
+        );
+
+        return $this->unwrapResponse($response);
+    }
+
+    private function resolveUrl(string $path): string
+    {
+        $base = rtrim((string) config('services.worthly.base_url'), '/');
+
+        return $base.'/'.ltrim($path, '/');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function unwrapResponse(Response $response): array
+    {
+        $status = $response->status();
+
+        if ($status >= 200 && $status < 300) {
+            /** @var array<string, mixed> $payload */
+            $payload = (array) ($response->json() ?? []);
+
+            if (array_key_exists('data', $payload) && is_array($payload['data'])) {
+                /** @var array<string, mixed> $data */
+                $data = $payload['data'];
+
+                return $data;
+            }
+
+            return $payload;
+        }
+
+        /** @var array<string, mixed> $payload */
+        $payload = (array) ($response->json() ?? []);
+        $message = is_string($payload['message'] ?? null) ? $payload['message'] : 'Worthly API error';
+
+        throw match ($status) {
+            401 => new UnauthorizedException($message, $status, $response, $payload),
+            422 => new ValidationException(
+                message: $message,
+                status: $status,
+                response: $response,
+                payload: $payload,
+                errors: is_array($payload['errors'] ?? null) ? $payload['errors'] : [],
+            ),
+            502 => new UpstreamFailureException($message, $status, $response, $payload),
+            default => new WorthlyApiException($message, $status, $response, $payload),
+        };
     }
 
     /**
@@ -245,6 +469,7 @@ class HomePage extends Component
             'suggestions' => $this->suggestions(),
             'recentRows' => $this->recentAnalysisRows(),
             'planUsage' => $this->planUsageLabel(),
+            'steps' => $this->steps(),
         ]);
     }
 }

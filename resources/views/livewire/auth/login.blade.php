@@ -66,29 +66,6 @@
         </div>
     </form>
 
-    <div style="display:flex;align-items:center;gap:10px;padding:12px 0;">
-        <div style="flex:1;height:1px;background:var(--w-line);"></div>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--w-muted);letter-spacing:0.12em;text-transform:uppercase;">Or continue with</span>
-        <div style="flex:1;height:1px;background:var(--w-line);"></div>
-    </div>
-
-    <div style="display:flex;gap:10px;">
-        <button
-            type="button"
-            @disabled(! $ssoEnabled)
-            data-testid="sso-apple"
-            title="Coming soon"
-            style="flex:1;appearance:none;background:var(--w-paper);border:1px solid var(--w-line-2);border-radius:14px;height:48px;font-family:var(--font-ui);font-size:14px;color:var(--w-ink);cursor:{{ $ssoEnabled ? 'pointer' : 'not-allowed' }};opacity:{{ $ssoEnabled ? '1' : '0.55' }};"
-        >Apple</button>
-        <button
-            type="button"
-            @disabled(! $ssoEnabled)
-            data-testid="sso-google"
-            title="Coming soon"
-            style="flex:1;appearance:none;background:var(--w-paper);border:1px solid var(--w-line-2);border-radius:14px;height:48px;font-family:var(--font-ui);font-size:14px;color:var(--w-ink);cursor:{{ $ssoEnabled ? 'pointer' : 'not-allowed' }};opacity:{{ $ssoEnabled ? '1' : '0.55' }};"
-        >Google</button>
-    </div>
-
     <div style="text-align:center;font-size:13px;color:var(--w-muted);">
         New here?
         <a

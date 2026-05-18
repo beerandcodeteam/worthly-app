@@ -21,8 +21,6 @@ class Login extends Component
 
     public bool $forgotPasswordEnabled = false;
 
-    public bool $ssoEnabled = false;
-
     public function submit(WorthlyApiClient $api, SecureTokenStorage $tokens): mixed
     {
         $this->resetErrorBag();

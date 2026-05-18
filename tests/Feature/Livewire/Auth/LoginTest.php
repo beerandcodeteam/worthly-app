@@ -67,12 +67,11 @@ it('shows field-level errors on 422', function () {
         ->assertNoRedirect();
 });
 
-it('disables the Forgot password link and SSO buttons in MVP', function () {
+it('disables the Forgot password link in MVP', function () {
     Livewire::test(Login::class)
         ->assertSet('forgotPasswordEnabled', false)
-        ->assertSet('ssoEnabled', false)
         ->assertSeeHtml('data-testid="forgot-password"')
-        ->assertSeeHtml('data-testid="sso-apple"')
-        ->assertSeeHtml('data-testid="sso-google"')
+        ->assertDontSeeHtml('data-testid="sso-apple"')
+        ->assertDontSeeHtml('data-testid="sso-google"')
         ->assertSeeHtml('disabled');
 });
