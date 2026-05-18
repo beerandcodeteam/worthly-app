@@ -32,75 +32,17 @@
             </div>
         </div>
     @elseif ($submitting)
-        {{-- Analyzing loader --}}
-        <div
-            data-testid="analyzing-loader"
-            @if ($autoSubmit) wire:init="runImageAnalysis" @endif
-            style="display:flex;flex-direction:column;flex:1;padding:0 0 28px;background:var(--w-cream);"
-        >
-            <x-ui.screen-header
-                transparent
-                eyebrow="Image analysis"
-                title="Worthly is thinking…"
-            />
-
-            <div style="flex:1;padding:0 28px;display:flex;flex-direction:column;">
-                <div style="margin-top:24px;padding:0 4px;">
-                    @if ($image)
-                        <div
-                            data-testid="loader-image-echo"
-                            style="margin-bottom:28px;padding:16px;background:var(--w-paper);border-radius:14px;border:0.5px solid var(--w-line);display:flex;gap:12px;align-items:center;"
-                        >
-                            <img
-                                src="{{ $image->temporaryUrl() }}"
-                                alt="Selected image"
-                                data-testid="loader-image-thumb"
-                                style="width:72px;height:72px;border-radius:10px;object-fit:cover;"
-                            />
-                            <div>
-                                <div style="font-family:var(--font-mono);font-size:10px;color:var(--w-muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;">Image uploaded</div>
-                                <div style="font-size:14px;color:var(--w-ink);">{{ $image->getClientOriginalName() }}</div>
-                            </div>
-                        </div>
-                    @endif
-
-                    <div
-                        data-testid="loader-steps"
-                        x-data="{ step: 0, total: {{ count($steps) }} }"
-                        x-init="
-                            const tick = () => {
-                                if (step < total - 1) {
-                                    step++;
-                                    setTimeout(tick, 700);
-                                }
-                            };
-                            setTimeout(tick, 700);
-                        "
-                        style="display:flex;flex-direction:column;gap:2px;"
-                    >
-                        @foreach ($steps as $i => $label)
-                            <div
-                                data-testid="loader-step"
-                                data-step-index="{{ $i }}"
-                                style="display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:0.5px solid var(--w-line);"
-                            >
-                                <div style="width:22px;height:22px;border-radius:50%;border:1px solid var(--w-line-2);"
-                                     :class="step > {{ $i }} ? 'is-done' : (step === {{ $i }} ? 'is-active' : 'is-idle')"
-                                ></div>
-                                <div style="flex:1;font-size:14px;color:var(--w-ink-2);">{{ $label }}</div>
-                                <span style="font-family:var(--font-mono);font-size:10px;color:var(--w-muted);letter-spacing:0.08em;">
-                                    {{ str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT) }}/{{ str_pad((string) count($steps), 2, '0', STR_PAD_LEFT) }}
-                                </span>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-
-                <div style="margin-top:auto;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--w-muted-2);letter-spacing:0.1em;text-transform:uppercase;">
-                    Model + web search running
-                </div>
-            </div>
-        </div>
+        @include('livewire._partials.analyzing-loader', [
+            'image' => $image,
+            'query' => null,
+            'pipelineSteps' => $pipelineSteps,
+            'analysisStatus' => $analysisStatus,
+            'analysisFailed' => $analysisFailed,
+            'lastError' => $lastError,
+            'autoSubmit' => $autoSubmit,
+            'autoSubmitMethod' => 'runImageAnalysis',
+            'pollMethod' => 'pollAnalysisStatus',
+        ])
     @else
         <div style="display:flex;flex-direction:column;flex:1;padding:64px 0 24px;">
             {{-- Header --}}

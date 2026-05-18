@@ -54,20 +54,34 @@ it('rejects images larger than 8 MB client-side without hitting the API', functi
 });
 
 it('sends multipart/form-data with input_type=image and the file part named image', function () {
+    $pendingPayload = worthlyAnalysisPayload([
+        'id' => 77,
+        'input_type' => 'image',
+        'status' => 'pending',
+        'current_step' => null,
+    ]);
+
+    $completedPayload = worthlyAnalysisPayload([
+        'id' => 77,
+        'input_type' => 'image',
+        'status' => 'completed',
+        'current_step' => 'l5',
+    ]);
+
     Http::fake([
-        'api.worthly.test/api/analyses' => Http::response(worthlyAnalysisPayload([
-            'id' => 77,
-            'input_type' => 'image',
-        ]), 201),
+        'api.worthly.test/api/analyses' => Http::response($pendingPayload, 202),
+        'api.worthly.test/api/analyses/77' => Http::response($completedPayload, 200),
     ]);
 
     $file = UploadedFile::fake()->image('photo.jpg');
 
-    Livewire::test(Composer::class)
+    $component = Livewire::test(Composer::class)
         ->set('image', $file)
         ->call('submit')
         ->assertHasNoErrors()
-        ->assertRedirect(route('analyses.show', ['analysis' => 77]));
+        ->assertNoRedirect()
+        ->assertSet('pollingAnalysisId', 77)
+        ->assertSet('analysisStatus', 'pending');
 
     Http::assertSent(function ($request) {
         if ($request->url() !== 'https://api.worthly.test/api/analyses') {
@@ -88,6 +102,10 @@ it('sends multipart/form-data with input_type=image and the file part named imag
             && str_contains($body, 'image')
             && str_contains($body, 'name="image"');
     });
+
+    $component
+        ->call('pollAnalysisStatus')
+        ->assertRedirect(route('analyses.show', ['analysis' => 77]));
 });
 
 it('renders the 422 errors.image message inline next to the thumbnail', function () {

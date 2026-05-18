@@ -16,18 +16,39 @@ function authenticateAnalyzeUser(string $token = 'analyze-test-token'): void
     app(SecureTokenStorage::class)->put($token);
 }
 
-it('submits a text analysis and lands on the Result screen with the returned data', function () {
+it('submits a text analysis and polls until the analysis completes', function () {
     authenticateAnalyzeUser();
 
-    Http::fake([
-        'api.worthly.test/api/analyses' => Http::response(worthlyAnalysisPayload(['id' => 99]), 201),
+    $pendingPayload = worthlyAnalysisPayload([
+        'id' => 99,
+        'status' => 'pending',
+        'current_step' => null,
+        'product' => ['name' => null, 'category' => null, 'estimated_price_range' => null],
+        'summary' => null,
+        'similar_products' => [],
+        'cost_benefit_analysis' => null,
+        'recommendation' => ['decision' => null, 'reason' => null],
     ]);
 
-    Livewire::test(Composer::class)
+    $completedPayload = worthlyAnalysisPayload([
+        'id' => 99,
+        'status' => 'completed',
+        'current_step' => 'l5',
+    ]);
+
+    Http::fake([
+        'api.worthly.test/api/analyses' => Http::response($pendingPayload, 202),
+        'api.worthly.test/api/analyses/99' => Http::response($completedPayload, 200),
+    ]);
+
+    $component = Livewire::test(Composer::class)
         ->set('query', 'Logitech MX Master 3S')
         ->call('submit')
         ->assertHasNoErrors()
-        ->assertRedirect(route('analyses.show', ['analysis' => 99]));
+        ->assertNoRedirect()
+        ->assertSet('submitting', true)
+        ->assertSet('pollingAnalysisId', 99)
+        ->assertSet('analysisStatus', 'pending');
 
     Http::assertSent(function ($request) {
         $body = $request->data();
@@ -38,8 +59,13 @@ it('submits a text analysis and lands on the Result screen with the returned dat
             && ($body['query'] ?? null) === 'Logitech MX Master 3S';
     });
 
+    $component
+        ->call('pollAnalysisStatus')
+        ->assertRedirect(route('analyses.show', ['analysis' => 99]));
+
     expect(Cache::get('analyses.99'))->toBeArray()
-        ->and(Cache::get('analyses.99')['id'])->toBe(99);
+        ->and(Cache::get('analyses.99')['id'])->toBe(99)
+        ->and(Cache::get('analyses.99')['status'])->toBe('completed');
 });
 
 it('caps the input at 1000 characters', function () {
@@ -107,22 +133,41 @@ it('prefills the query from ?q= and renders the loader when ?autostart=1', funct
         ->toContain('wire:init="runAutoSubmit"');
 });
 
-it('runAutoSubmit fires the API call once and redirects on 201', function () {
+it('runAutoSubmit fires the API call once and starts polling on 202', function () {
     authenticateAnalyzeUser();
 
-    Http::fake([
-        'api.worthly.test/api/analyses' => Http::response(worthlyAnalysisPayload(['id' => 77]), 201),
+    $pendingPayload = worthlyAnalysisPayload([
+        'id' => 77,
+        'status' => 'pending',
+        'current_step' => null,
     ]);
 
-    Livewire::withQueryParams(['q' => 'Kindle Paperwhite', 'autostart' => '1'])
+    $completedPayload = worthlyAnalysisPayload([
+        'id' => 77,
+        'status' => 'completed',
+        'current_step' => 'l5',
+    ]);
+
+    Http::fake([
+        'api.worthly.test/api/analyses' => Http::response($pendingPayload, 202),
+        'api.worthly.test/api/analyses/77' => Http::response($completedPayload, 200),
+    ]);
+
+    $component = Livewire::withQueryParams(['q' => 'Kindle Paperwhite', 'autostart' => '1'])
         ->test(Composer::class)
         ->assertSet('autoSubmit', true)
         ->call('runAutoSubmit')
         ->assertSet('autoSubmit', false)
-        ->assertRedirect(route('analyses.show', ['analysis' => 77]));
+        ->assertSet('pollingAnalysisId', 77)
+        ->assertSet('analysisStatus', 'pending')
+        ->assertNoRedirect();
 
     Http::assertSent(fn ($request) => $request->url() === 'https://api.worthly.test/api/analyses'
         && ($request->data()['query'] ?? null) === 'Kindle Paperwhite');
+
+    $component
+        ->call('pollAnalysisStatus')
+        ->assertRedirect(route('analyses.show', ['analysis' => 77]));
 });
 
 it('runAutoSubmit is a no-op when the autoSubmit flag is false', function () {

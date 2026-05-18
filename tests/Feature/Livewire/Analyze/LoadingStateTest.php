@@ -67,16 +67,34 @@ it('echoes the text query or the image thumbnail', function () {
         ->toContain('data-testid="loader-image-thumb"');
 });
 
-it('transitions to the Result screen as soon as the API resolves', function () {
-    Http::fake([
-        'api.worthly.test/api/analyses' => Http::response(worthlyAnalysisPayload(['id' => 123]), 201),
+it('transitions to the Result screen once polling reports completed', function () {
+    $pendingPayload = worthlyAnalysisPayload([
+        'id' => 123,
+        'status' => 'pending',
+        'current_step' => null,
     ]);
 
-    Livewire::test(Composer::class)
+    $completedPayload = worthlyAnalysisPayload([
+        'id' => 123,
+        'status' => 'completed',
+        'current_step' => 'l5',
+    ]);
+
+    Http::fake([
+        'api.worthly.test/api/analyses' => Http::response($pendingPayload, 202),
+        'api.worthly.test/api/analyses/123' => Http::response($completedPayload, 200),
+    ]);
+
+    $component = Livewire::test(Composer::class)
         ->set('query', 'Kindle Paperwhite')
         ->call('submit')
         ->assertHasNoErrors()
-        ->assertSet('submitting', false)
+        ->assertSet('submitting', true)
+        ->assertSet('pollingAnalysisId', 123)
+        ->assertNoRedirect();
+
+    $component
+        ->call('pollAnalysisStatus')
         ->assertRedirect(route('analyses.show', ['analysis' => 123]));
 });
 

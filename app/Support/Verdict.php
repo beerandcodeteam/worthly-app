@@ -12,8 +12,9 @@ enum Verdict: string
     {
         return match ($decision) {
             'buy', 'buy_if_price_is_good' => self::Buy,
-            'wait', 'consider_alternatives' => self::Wait,
+            'wait', 'consider_alternatives', 'insufficient_evidence' => self::Wait,
             'do_not_buy' => self::Skip,
+            default => self::Wait,
         };
     }
 

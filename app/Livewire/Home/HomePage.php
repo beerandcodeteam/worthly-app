@@ -10,6 +10,7 @@ use App\Services\Worthly\Exceptions\UpstreamFailureException;
 use App\Services\Worthly\Exceptions\ValidationException;
 use App\Services\Worthly\Exceptions\WorthlyApiException;
 use App\Services\Worthly\WorthlyApiClient;
+use App\Support\AnalysisPipeline;
 use App\Support\Verdict;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
@@ -47,6 +48,18 @@ class HomePage extends Component
     public bool $upstreamError = false;
 
     public bool $autoSubmit = false;
+
+    public ?int $pollingAnalysisId = null;
+
+    public string $analysisStatus = '';
+
+    public ?string $currentStep = null;
+
+    public ?string $lastError = null;
+
+    public int $pollStartedAt = 0;
+
+    public bool $analysisFailed = false;
 
     public ?string $toast = null;
 
@@ -153,6 +166,18 @@ class HomePage extends Component
     public function dismissUpstreamError(): void
     {
         $this->upstreamError = false;
+        $this->analysisFailed = false;
+        $this->lastError = null;
+    }
+
+    public function retryAnalysis(): void
+    {
+        $this->dismissUpstreamError();
+        $this->submitting = false;
+        $this->pollingAnalysisId = null;
+        $this->analysisStatus = '';
+        $this->currentStep = null;
+        $this->pollStartedAt = 0;
     }
 
     public function submit(): mixed
@@ -245,7 +270,7 @@ class HomePage extends Component
      */
     public function steps(): array
     {
-        return Composer::STEP_LABELS;
+        return AnalysisPipeline::stepLabels();
     }
 
     public function planUsageLabel(): string
@@ -307,19 +332,83 @@ class HomePage extends Component
 
         $id = (int) ($data['id'] ?? 0);
 
-        if ($id > 0) {
-            Cache::put('analyses.'.$id, $data);
-        }
-
-        $this->submitting = false;
-
         if ($id <= 0) {
+            $this->submitting = false;
             $this->upstreamError = true;
 
             return null;
         }
 
-        return $this->redirectRoute('analyses.show', ['analysis' => $id], navigate: true);
+        Cache::put('analyses.'.$id, $data);
+
+        $this->pollingAnalysisId = $id;
+        $this->analysisStatus = (string) ($data['status'] ?? AnalysisPipeline::STATUS_PENDING);
+        $this->currentStep = is_string($data['current_step'] ?? null) ? $data['current_step'] : null;
+        $this->lastError = is_string($data['last_error'] ?? null) ? $data['last_error'] : null;
+        $this->pollStartedAt = time();
+
+        if ($this->analysisStatus === AnalysisPipeline::STATUS_COMPLETED) {
+            return $this->redirectRoute('analyses.show', ['analysis' => $id], navigate: true);
+        }
+
+        if ($this->analysisStatus === AnalysisPipeline::STATUS_FAILED) {
+            $this->analysisFailed = true;
+        }
+
+        return null;
+    }
+
+    public function pollAnalysisStatus(WorthlyApiClient $api, SecureTokenStorage $tokens): mixed
+    {
+        if ($this->pollingAnalysisId === null) {
+            return null;
+        }
+
+        if (AnalysisPipeline::isTerminal($this->analysisStatus)) {
+            return null;
+        }
+
+        try {
+            $data = $api->get('/api/analyses/'.$this->pollingAnalysisId);
+        } catch (NotFoundException) {
+            $this->analysisStatus = AnalysisPipeline::STATUS_FAILED;
+            $this->analysisFailed = true;
+            $this->lastError = 'Analysis is no longer available.';
+
+            return null;
+        } catch (UnauthorizedException) {
+            return $this->handleSessionExpired($tokens);
+        }
+
+        $this->analysisStatus = (string) ($data['status'] ?? $this->analysisStatus);
+        $this->currentStep = is_string($data['current_step'] ?? null) ? $data['current_step'] : null;
+        $this->lastError = is_string($data['last_error'] ?? null) ? $data['last_error'] : null;
+
+        if ($this->analysisStatus === AnalysisPipeline::STATUS_COMPLETED) {
+            Cache::put('analyses.'.$this->pollingAnalysisId, $data);
+
+            return $this->redirectRoute('analyses.show', ['analysis' => $this->pollingAnalysisId], navigate: true);
+        }
+
+        if ($this->analysisStatus === AnalysisPipeline::STATUS_FAILED) {
+            $this->analysisFailed = true;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<array{key: string, label: string, state: 'done'|'active'|'idle'}>
+     */
+    public function pipelineSteps(): array
+    {
+        return array_map(function (array $step, int $index): array {
+            return [
+                'key' => $step['key'],
+                'label' => $step['label'],
+                'state' => AnalysisPipeline::stepState($index, $this->analysisStatus, $this->currentStep),
+            ];
+        }, AnalysisPipeline::STEPS, array_keys(AnalysisPipeline::STEPS));
     }
 
     /**
@@ -490,6 +579,7 @@ class HomePage extends Component
             'recentRows' => $this->recentAnalysisRows(),
             'planUsage' => $this->planUsageLabel(),
             'steps' => $this->steps(),
+            'pipelineSteps' => $this->pipelineSteps(),
         ]);
     }
 }
