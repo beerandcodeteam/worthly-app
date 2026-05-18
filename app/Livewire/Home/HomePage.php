@@ -272,7 +272,7 @@ class HomePage extends Component
 
             return [
                 'id' => (int) ($analysis['id'] ?? 0),
-                'product_name' => (string) data_get($analysis, 'product.name', 'Untitled analysis'),
+                'product_name' => $this->resolveProductName($analysis),
                 'verdict' => $verdict?->code(),
                 'verdict_label' => $verdict?->label(),
                 'summary' => $this->shortSummary((string) ($analysis['summary'] ?? '')),
@@ -437,6 +437,26 @@ class HomePage extends Component
         $first = strtok($name, ' ');
 
         return $first === false ? $name : $first;
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     */
+    private function resolveProductName(array $analysis): string
+    {
+        $candidates = [
+            data_get($analysis, 'product.name'),
+            $analysis['product_name'] ?? null,
+            $analysis['name'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
+        }
+
+        return 'Untitled analysis';
     }
 
     private function shortSummary(string $summary): ?string

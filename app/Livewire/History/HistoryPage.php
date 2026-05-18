@@ -348,7 +348,7 @@ class HistoryPage extends Component
 
             return [
                 'id' => (int) ($row['id'] ?? 0),
-                'product_name' => (string) data_get($row, 'product.name', 'Untitled analysis'),
+                'product_name' => $this->resolveProductName($row),
                 'verdict' => $verdict?->code(),
                 'verdict_label' => $verdict?->label(),
                 'verdict_bucket' => $verdict !== null ? strtolower($verdict->code()) : null,
@@ -357,6 +357,26 @@ class HistoryPage extends Component
                 'relative' => $this->relativeTimestamp((string) ($row['created_at'] ?? '')),
             ];
         }, $rows);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function resolveProductName(array $row): string
+    {
+        $candidates = [
+            data_get($row, 'product.name'),
+            $row['product_name'] ?? null,
+            $row['name'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
+        }
+
+        return 'Untitled analysis';
     }
 
     /**
