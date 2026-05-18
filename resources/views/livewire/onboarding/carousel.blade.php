@@ -18,9 +18,7 @@
     style="display:flex;flex-direction:column;flex:1;padding:70px 28px 36px;background:var(--w-cream);min-height:100vh;"
 >
     <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-family:var(--font-display);font-style:italic;font-size:22px;line-height:1;letter-spacing:-0.01em;color:var(--w-ink);display:inline-flex;align-items:baseline;gap:1px;">
-            Worthly<span aria-hidden="true" style="width:5px;height:5px;border-radius:50%;background:var(--w-buy);display:inline-block;margin-bottom:2.6px;"></span>
-        </span>
+        <x-ui.wordmark :size="22" />
         <button
             type="button"
             wire:click="skip"

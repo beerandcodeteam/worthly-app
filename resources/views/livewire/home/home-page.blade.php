@@ -4,7 +4,7 @@
 >
     {{-- Header: plan usage indicator --}}
     <div style="display:flex;justify-content:space-between;align-items:center;padding:0 22px;margin-bottom:22px;">
-        <span style="font-family:var(--font-display);font-size:18px;color:var(--w-ink);">Worthly</span>
+        <x-ui.wordmark :size="22" />
         <div
             data-testid="plan-usage"
             style="display:flex;align-items:center;gap:6px;"

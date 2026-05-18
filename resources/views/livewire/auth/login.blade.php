@@ -5,7 +5,7 @@
             wire:navigate
             style="background:transparent;border:0;color:var(--w-ink);text-decoration:none;font-family:var(--font-ui);font-size:13px;"
         >&larr;</a>
-        <span style="font-family:var(--font-display);font-size:18px;color:var(--w-ink);">Worthly</span>
+        <x-ui.wordmark :size="20" />
         <span style="width:32px;"></span>
     </div>
 
