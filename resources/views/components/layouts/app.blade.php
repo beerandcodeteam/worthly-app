@@ -1,12 +1,25 @@
 @props([
     'title' => null,
-    'activeTab' => 'home',
+    'activeTab' => null,
     'showTabBar' => true,
     'header' => null,
-    'homeHref' => '#',
-    'historyHref' => '#',
-    'profileHref' => '#',
+    'homeHref' => null,
+    'historyHref' => null,
+    'profileHref' => null,
 ])
+
+@php
+    $resolvedHomeHref = $homeHref ?? route('home');
+    $resolvedHistoryHref = $historyHref ?? route('history');
+    $resolvedProfileHref = $profileHref ?? route('profile');
+
+    $currentRouteName = optional(request()->route())->getName();
+    $resolvedActiveTab = $activeTab ?? match (true) {
+        $currentRouteName === 'history' => 'history',
+        $currentRouteName === 'profile' => 'profile',
+        default => 'home',
+    };
+@endphp
 
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -36,10 +49,10 @@
 
             @if ($showTabBar)
                 <x-ui.tab-bar
-                    :active="$activeTab"
-                    :homeHref="$homeHref"
-                    :historyHref="$historyHref"
-                    :profileHref="$profileHref"
+                    :active="$resolvedActiveTab"
+                    :homeHref="$resolvedHomeHref"
+                    :historyHref="$resolvedHistoryHref"
+                    :profileHref="$resolvedProfileHref"
                 />
             @endif
         </div>

@@ -24,6 +24,8 @@
             @endphp
             <a
                 href="{{ $tab['href'] }}"
+                wire:navigate
+                data-testid="tab-{{ $tab['key'] }}"
                 aria-current="{{ $isActive ? 'page' : 'false' }}"
                 style="flex:1;text-decoration:none;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;color:{{ $color }};"
             >
