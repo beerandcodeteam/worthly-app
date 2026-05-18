@@ -15,25 +15,28 @@ class Carousel extends Component
     public int $currentSlide = 0;
 
     /**
-     * @return list<array{eyebrow: string, headline: string, body: string}>
+     * @return list<array{eyebrow: string, headline_html: string, body: string, art: string}>
      */
     public function slides(): array
     {
         return [
             [
                 'eyebrow' => '01 / Worthly',
-                'headline' => 'Is it actually worth it?',
-                'body' => "Snap a photo or paste a product name and Worthly tells you if it's a good buy.",
+                'headline_html' => 'Is it <em>actually</em> worth it?',
+                'body' => "Snap a photo or paste a product name. Worthly tells you if it's a good buy — right now.",
+                'art' => 'scan',
             ],
             [
                 'eyebrow' => '02 / What you get',
-                'headline' => 'A friendly second opinion.',
-                'body' => 'Friendly second opinion that reads every review for you.',
+                'headline_html' => 'A friendly second opinion.',
+                'body' => "Like asking the friend who reads every review so you don't have to. Honest. Specific. Yours.",
+                'art' => 'verdict',
             ],
             [
                 'eyebrow' => '03 / How it works',
-                'headline' => 'Buy. Wait. Skip.',
-                'body' => 'Three clear verdicts: Buy, Wait, Skip.',
+                'headline_html' => 'Buy. Wait. Skip.',
+                'body' => 'Three verdicts. One clear recommendation per product, backed by fresh prices and real reviews.',
+                'art' => 'trio',
             ],
         ];
     }

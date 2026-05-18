@@ -11,13 +11,13 @@ beforeEach(function () {
 it('renders three slides with the correct copy', function () {
     Livewire::test(Carousel::class)
         ->assertSet('currentSlide', 0)
-        ->assertSeeText('Snap a photo or paste a product name and Worthly tells you if it\'s a good buy.')
+        ->assertSeeText("Snap a photo or paste a product name. Worthly tells you if it's a good buy — right now.")
         ->call('next')
         ->assertSet('currentSlide', 1)
-        ->assertSeeText('Friendly second opinion that reads every review for you.')
+        ->assertSeeText("Like asking the friend who reads every review so you don't have to. Honest. Specific. Yours.")
         ->call('next')
         ->assertSet('currentSlide', 2)
-        ->assertSeeText('Three clear verdicts: Buy, Wait, Skip.');
+        ->assertSeeText('Three verdicts. One clear recommendation per product, backed by fresh prices and real reviews.');
 });
 
 it('routes Get started to Register and the secondary CTA to Login', function () {
