@@ -10,7 +10,15 @@ beforeEach(function () {
     fakeWorthlyApi();
 });
 
-it('routes to home when /api/me returns 200', function () {
+it('always routes to onboarding on cold start', function () {
+    Http::fake();
+
+    $this->get('/')->assertRedirect(route('onboarding'));
+
+    Http::assertNothingSent();
+});
+
+it('refreshes the cached user profile when a valid token is present and routes to onboarding', function () {
     app(SecureTokenStorage::class)->put('valid-token');
 
     Http::fake([
@@ -19,14 +27,14 @@ it('routes to home when /api/me returns 200', function () {
         ], 200),
     ]);
 
-    $this->get('/')->assertRedirect(route('home'));
+    $this->get('/')->assertRedirect(route('onboarding'));
 
     expect(app(SecureTokenStorage::class)->get())->toBe('valid-token');
     expect(Cache::get('auth.user'))->toMatchArray(['name' => 'Ada']);
     Http::assertSent(fn ($request) => $request->url() === 'https://api.worthly.test/api/me');
 });
 
-it('wipes the token and routes to login when /api/me returns 401', function () {
+it('wipes the token and still routes to onboarding when /api/me returns 401', function () {
     app(SecureTokenStorage::class)->put('expired-token');
     Cache::put('auth.user', ['name' => 'Stale']);
 
@@ -34,18 +42,10 @@ it('wipes the token and routes to login when /api/me returns 401', function () {
         'api.worthly.test/api/me' => Http::response(['message' => 'Unauthenticated.'], 401),
     ]);
 
-    $this->get('/')->assertRedirect(route('login'));
+    $this->get('/')->assertRedirect(route('onboarding'));
 
     expect(app(SecureTokenStorage::class)->get())->toBeNull();
     expect(Cache::get('auth.user'))->toBeNull();
-});
-
-it('does not call /api/me when no token is stored', function () {
-    Http::fake();
-
-    $this->get('/')->assertRedirect(route('login'));
-
-    Http::assertNothingSent();
 });
 
 it('never logs the token in plain text', function () {

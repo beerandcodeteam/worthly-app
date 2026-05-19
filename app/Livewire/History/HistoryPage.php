@@ -349,14 +349,57 @@ class HistoryPage extends Component
             return [
                 'id' => (int) ($row['id'] ?? 0),
                 'product_name' => $this->resolveProductName($row),
+                'product_image_url' => $this->resolveProductImageUrl($row),
                 'verdict' => $verdict?->code(),
                 'verdict_label' => $verdict?->label(),
                 'verdict_bucket' => $verdict !== null ? strtolower($verdict->code()) : null,
+                'summary' => $this->resolveSummary($row),
                 'input_type' => (string) ($row['input_type'] ?? 'text'),
                 'created_at' => (string) ($row['created_at'] ?? ''),
                 'relative' => $this->relativeTimestamp((string) ($row['created_at'] ?? '')),
             ];
         }, $rows);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function resolveProductImageUrl(array $row): ?string
+    {
+        $candidates = [
+            $row['product_image_url'] ?? null,
+            data_get($row, 'product.image_url'),
+            $row['image_url'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function resolveSummary(array $row): ?string
+    {
+        $candidates = [
+            $row['summary'] ?? null,
+            data_get($row, 'recommendation.reason'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                $trimmed = trim($candidate);
+
+                return mb_strlen($trimmed) > 120 ? mb_substr($trimmed, 0, 117).'…' : $trimmed;
+            }
+        }
+
+        return null;
     }
 
     /**

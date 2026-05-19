@@ -113,7 +113,12 @@
                                     data-verdict-bucket="{{ $row['verdict_bucket'] ?? '' }}"
                                     style="position:relative;background:var(--w-paper);border:0.5px solid var(--w-line);border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center;"
                                 >
-                                    <x-ui.product-image :brand="$row['product_name']" :size="48" :radius="10" />
+                                    <x-ui.product-image
+                                        :brand="$row['product_name']"
+                                        :url="$row['product_image_url'] ?? null"
+                                        :size="48"
+                                        :radius="10"
+                                    />
                                     <button
                                         type="button"
                                         wire:click="openAnalysis({{ (int) $row['id'] }})"
@@ -136,9 +141,17 @@
                                                 >Loading…</span>
                                             @endif
                                         </div>
-                                        <div style="font-size:14px;font-weight:500;color:var(--w-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                        <div style="font-size:14px;font-weight:500;color:var(--w-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">
                                             {{ $row['product_name'] }}
                                         </div>
+                                        @if (! empty($row['summary']))
+                                            <div
+                                                data-testid="history-row-summary"
+                                                style="font-size:12px;color:var(--w-muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;"
+                                            >
+                                                {{ $row['summary'] }}
+                                            </div>
+                                        @endif
                                     </button>
                                     <button
                                         type="button"

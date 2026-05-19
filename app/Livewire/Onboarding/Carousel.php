@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Onboarding;
 
-use Illuminate\Support\Facades\Cache;
+use App\Contracts\SecureTokenStorage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -10,8 +10,6 @@ use Livewire\Component;
 
 class Carousel extends Component
 {
-    public const FIRST_LAUNCH_FLAG = 'onboarding.completed';
-
     public int $currentSlide = 0;
 
     /**
@@ -41,15 +39,6 @@ class Carousel extends Component
         ];
     }
 
-    public function mount(): mixed
-    {
-        if (Cache::get(self::FIRST_LAUNCH_FLAG) === true) {
-            return $this->redirectRoute('login', navigate: false);
-        }
-
-        return null;
-    }
-
     public function goTo(int $index): void
     {
         $max = count($this->slides()) - 1;
@@ -66,25 +55,19 @@ class Carousel extends Component
         $this->goTo($this->currentSlide - 1);
     }
 
-    public function skip(): mixed
+    public function skip(SecureTokenStorage $tokens): mixed
     {
-        $this->markCompleted();
-
-        return $this->redirectRoute('login', navigate: true);
+        return $this->routeAfterOnboarding($tokens, 'login');
     }
 
-    public function getStarted(): mixed
+    public function getStarted(SecureTokenStorage $tokens): mixed
     {
-        $this->markCompleted();
-
-        return $this->redirectRoute('register', navigate: true);
+        return $this->routeAfterOnboarding($tokens, 'register');
     }
 
-    public function iHaveAnAccount(): mixed
+    public function iHaveAnAccount(SecureTokenStorage $tokens): mixed
     {
-        $this->markCompleted();
-
-        return $this->redirectRoute('login', navigate: true);
+        return $this->routeAfterOnboarding($tokens, 'login');
     }
 
     #[Computed]
@@ -93,9 +76,15 @@ class Carousel extends Component
         return $this->currentSlide === count($this->slides()) - 1;
     }
 
-    private function markCompleted(): void
+    private function routeAfterOnboarding(SecureTokenStorage $tokens, string $fallbackRoute): mixed
     {
-        Cache::forever(self::FIRST_LAUNCH_FLAG, true);
+        $token = $tokens->get();
+
+        if ($token !== null && $token !== '') {
+            return $this->redirectRoute('home', navigate: true);
+        }
+
+        return $this->redirectRoute($fallbackRoute, navigate: true);
     }
 
     #[Layout('components.layouts.guest')]

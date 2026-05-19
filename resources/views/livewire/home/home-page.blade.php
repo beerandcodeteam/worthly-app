@@ -224,7 +224,12 @@
                         data-analysis-id="{{ $row['id'] }}"
                         style="appearance:none;background:var(--w-paper);border:0.5px solid var(--w-line);border-radius:14px;padding:12px;text-align:left;cursor:pointer;display:flex;gap:12px;align-items:center;width:100%;"
                     >
-                        <x-ui.product-image :brand="$row['product_name']" :size="48" :radius="10" />
+                        <x-ui.product-image
+                            :brand="$row['product_name']"
+                            :url="$row['product_image_url'] ?? null"
+                            :size="48"
+                            :radius="10"
+                        />
                         <div style="flex:1;min-width:0;">
                             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
                                 @if ($row['verdict'])

@@ -1,11 +1,12 @@
 <?php
 
+use App\Contracts\SecureTokenStorage;
 use App\Livewire\Onboarding\Carousel;
-use Illuminate\Support\Facades\Cache;
 use Livewire\Livewire;
 
 beforeEach(function () {
-    Cache::forget(Carousel::FIRST_LAUNCH_FLAG);
+    fakeWorthlyApi();
+    app(SecureTokenStorage::class)->forget();
 });
 
 it('renders three slides with the correct copy', function () {
@@ -20,38 +21,42 @@ it('renders three slides with the correct copy', function () {
         ->assertSeeText('Three verdicts. One clear recommendation per product, backed by fresh prices and real reviews.');
 });
 
-it('routes Get started to Register and the secondary CTA to Login', function () {
+it('routes Get started to Register and the secondary CTAs to Login when no token is stored', function () {
     Livewire::test(Carousel::class)
         ->call('goTo', 2)
         ->call('getStarted')
         ->assertRedirect(route('register'));
 
-    Cache::forget(Carousel::FIRST_LAUNCH_FLAG);
-
     Livewire::test(Carousel::class)
         ->call('goTo', 2)
         ->call('iHaveAnAccount')
         ->assertRedirect(route('login'));
-});
-
-it('sets the first-launch flag once the user reaches the last slide or skips', function () {
-    expect(Cache::get(Carousel::FIRST_LAUNCH_FLAG))->toBeNull();
-
-    Livewire::test(Carousel::class)->call('skip');
-
-    expect(Cache::get(Carousel::FIRST_LAUNCH_FLAG))->toBeTrue();
-
-    Cache::forget(Carousel::FIRST_LAUNCH_FLAG);
 
     Livewire::test(Carousel::class)
-        ->call('goTo', 2)
-        ->call('getStarted');
-
-    expect(Cache::get(Carousel::FIRST_LAUNCH_FLAG))->toBeTrue();
+        ->call('skip')
+        ->assertRedirect(route('login'));
 });
 
-it('does not show onboarding again after the flag is set', function () {
-    Cache::forever(Carousel::FIRST_LAUNCH_FLAG, true);
+it('routes every CTA to Home when a token is already stored', function () {
+    app(SecureTokenStorage::class)->put('valid-token');
 
-    $this->get(route('onboarding'))->assertRedirect(route('login'));
+    Livewire::test(Carousel::class)
+        ->call('getStarted')
+        ->assertRedirect(route('home'));
+
+    Livewire::test(Carousel::class)
+        ->call('iHaveAnAccount')
+        ->assertRedirect(route('home'));
+
+    Livewire::test(Carousel::class)
+        ->call('skip')
+        ->assertRedirect(route('home'));
+});
+
+it('shows onboarding on every cold start regardless of prior completion', function () {
+    $this->get(route('onboarding'))->assertOk();
+
+    app(SecureTokenStorage::class)->put('valid-token');
+
+    $this->get(route('onboarding'))->assertOk();
 });

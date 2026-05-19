@@ -15,23 +15,18 @@ class SessionRestoreController extends Controller
     {
         $token = $tokens->get();
 
-        if ($token === null || $token === '') {
-            return redirect()->route('login');
+        if ($token !== null && $token !== '') {
+            try {
+                $user = $api->get('/api/me');
+                Cache::put('auth.user', $user);
+                Log::info('worthly.session.restore.success', ['token_present' => true]);
+            } catch (UnauthorizedException) {
+                $tokens->forget();
+                Cache::forget('auth.user');
+                Log::info('worthly.session.restore.unauthenticated', ['token_present' => true]);
+            }
         }
 
-        try {
-            $user = $api->get('/api/me');
-        } catch (UnauthorizedException) {
-            $tokens->forget();
-            Cache::forget('auth.user');
-            Log::info('worthly.session.restore.unauthenticated', ['token_present' => true]);
-
-            return redirect()->route('login');
-        }
-
-        Cache::put('auth.user', $user);
-        Log::info('worthly.session.restore.success', ['token_present' => true]);
-
-        return redirect()->route('home');
+        return redirect()->route('onboarding');
     }
 }

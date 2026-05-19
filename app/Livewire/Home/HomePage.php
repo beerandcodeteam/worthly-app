@@ -4,17 +4,17 @@ namespace App\Livewire\Home;
 
 use App\Contracts\SecureTokenStorage;
 use App\Livewire\Analyze\Composer;
+use App\Services\Worthly\AnalysisSubmitter;
 use App\Services\Worthly\Exceptions\NotFoundException;
 use App\Services\Worthly\Exceptions\UnauthorizedException;
 use App\Services\Worthly\Exceptions\UpstreamFailureException;
 use App\Services\Worthly\Exceptions\ValidationException;
-use App\Services\Worthly\Exceptions\WorthlyApiException;
 use App\Services\Worthly\WorthlyApiClient;
 use App\Support\AnalysisPipeline;
 use App\Support\Verdict;
-use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -212,7 +212,7 @@ class HomePage extends Component
         ], navigate: true);
     }
 
-    public function runImageAnalysis(WorthlyApiClient $api, SecureTokenStorage $tokens): mixed
+    public function runImageAnalysis(AnalysisSubmitter $submitter, SecureTokenStorage $tokens): mixed
     {
         if (! $this->autoSubmit) {
             return null;
@@ -226,7 +226,7 @@ class HomePage extends Component
             return null;
         }
 
-        return $this->performImageAnalysis($api, $tokens);
+        return $this->performImageAnalysis($submitter, $tokens);
     }
 
     public function clearToast(): void
@@ -298,19 +298,20 @@ class HomePage extends Component
             return [
                 'id' => (int) ($analysis['id'] ?? 0),
                 'product_name' => $this->resolveProductName($analysis),
+                'product_image_url' => $this->resolveProductImageUrl($analysis),
                 'verdict' => $verdict?->code(),
                 'verdict_label' => $verdict?->label(),
-                'summary' => $this->shortSummary((string) ($analysis['summary'] ?? '')),
+                'summary' => $this->resolveSummary($analysis),
                 'input_type' => (string) ($analysis['input_type'] ?? 'text'),
                 'relative' => $this->relativeTimestamp((string) ($analysis['created_at'] ?? '')),
             ];
         }, $this->recentAnalyses);
     }
 
-    private function performImageAnalysis(WorthlyApiClient $api, SecureTokenStorage $tokens): mixed
+    private function performImageAnalysis(AnalysisSubmitter $submitter, SecureTokenStorage $tokens): mixed
     {
         try {
-            $data = $this->postImage($api);
+            $data = $submitter->submitImage($this->image);
         } catch (ValidationException $exception) {
             $this->submitting = false;
 
@@ -328,6 +329,16 @@ class HomePage extends Component
             return null;
         } catch (UnauthorizedException) {
             return $this->handleSessionExpired($tokens);
+        } catch (\Throwable $e) {
+            Log::error('worthly.analysis.submit.exception', [
+                'message' => $e->getMessage(),
+                'exception' => $e::class,
+            ]);
+
+            $this->submitting = false;
+            $this->upstreamError = true;
+
+            return null;
         }
 
         $id = (int) ($data['id'] ?? 0);
@@ -412,72 +423,6 @@ class HomePage extends Component
     }
 
     /**
-     * @return array<string, mixed>
-     */
-    private function postImage(WorthlyApiClient $api): array
-    {
-        $request = $api->pendingRequest()
-            ->attach(
-                'image',
-                file_get_contents($this->image->getRealPath()),
-                $this->image->getClientOriginalName(),
-            );
-
-        $response = $request->post(
-            $this->resolveUrl('/api/analyses'),
-            ['input_type' => 'image'],
-        );
-
-        return $this->unwrapResponse($response);
-    }
-
-    private function resolveUrl(string $path): string
-    {
-        $base = rtrim((string) config('services.worthly.base_url'), '/');
-
-        return $base.'/'.ltrim($path, '/');
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function unwrapResponse(Response $response): array
-    {
-        $status = $response->status();
-
-        if ($status >= 200 && $status < 300) {
-            /** @var array<string, mixed> $payload */
-            $payload = (array) ($response->json() ?? []);
-
-            if (array_key_exists('data', $payload) && is_array($payload['data'])) {
-                /** @var array<string, mixed> $data */
-                $data = $payload['data'];
-
-                return $data;
-            }
-
-            return $payload;
-        }
-
-        /** @var array<string, mixed> $payload */
-        $payload = (array) ($response->json() ?? []);
-        $message = is_string($payload['message'] ?? null) ? $payload['message'] : 'Worthly API error';
-
-        throw match ($status) {
-            401 => new UnauthorizedException($message, $status, $response, $payload),
-            422 => new ValidationException(
-                message: $message,
-                status: $status,
-                response: $response,
-                payload: $payload,
-                errors: is_array($payload['errors'] ?? null) ? $payload['errors'] : [],
-            ),
-            502 => new UpstreamFailureException($message, $status, $response, $payload),
-            default => new WorthlyApiException($message, $status, $response, $payload),
-        };
-    }
-
-    /**
      * @param  array<string, mixed>  $payload
      */
     private function populateRecentAnalyses(array $payload): void
@@ -548,13 +493,45 @@ class HomePage extends Component
         return 'Untitled analysis';
     }
 
-    private function shortSummary(string $summary): ?string
+    /**
+     * @param  array<string, mixed>  $analysis
+     */
+    private function resolveProductImageUrl(array $analysis): ?string
     {
-        if ($summary === '') {
-            return null;
+        $candidates = [
+            $analysis['product_image_url'] ?? null,
+            data_get($analysis, 'product.image_url'),
+            $analysis['image_url'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return trim($candidate);
+            }
         }
 
-        return mb_strlen($summary) > 120 ? mb_substr($summary, 0, 117).'…' : $summary;
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     */
+    private function resolveSummary(array $analysis): ?string
+    {
+        $candidates = [
+            $analysis['summary'] ?? null,
+            data_get($analysis, 'recommendation.reason'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                $trimmed = trim($candidate);
+
+                return mb_strlen($trimmed) > 120 ? mb_substr($trimmed, 0, 117).'…' : $trimmed;
+            }
+        }
+
+        return null;
     }
 
     private function relativeTimestamp(string $iso): string

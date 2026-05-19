@@ -3,16 +3,16 @@
 namespace App\Livewire\Analyze;
 
 use App\Contracts\SecureTokenStorage;
+use App\Services\Worthly\AnalysisSubmitter;
 use App\Services\Worthly\Exceptions\NotFoundException;
 use App\Services\Worthly\Exceptions\UnauthorizedException;
 use App\Services\Worthly\Exceptions\UpstreamFailureException;
 use App\Services\Worthly\Exceptions\ValidationException;
-use App\Services\Worthly\Exceptions\WorthlyApiException;
 use App\Services\Worthly\WorthlyApiClient;
 use App\Support\AnalysisPipeline;
-use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -177,7 +177,7 @@ class Composer extends Component
         $this->pollStartedAt = 0;
     }
 
-    public function submit(WorthlyApiClient $api, SecureTokenStorage $tokens): mixed
+    public function submit(AnalysisSubmitter $submitter, SecureTokenStorage $tokens): mixed
     {
         $this->resetErrorBag();
         $this->upstreamError = false;
@@ -188,10 +188,10 @@ class Composer extends Component
 
         $this->submitting = true;
 
-        return $this->performAnalysisCall($api, $tokens);
+        return $this->performAnalysisCall($submitter, $tokens);
     }
 
-    public function runAutoSubmit(WorthlyApiClient $api, SecureTokenStorage $tokens): mixed
+    public function runAutoSubmit(AnalysisSubmitter $submitter, SecureTokenStorage $tokens): mixed
     {
         if (! $this->autoSubmit) {
             return null;
@@ -202,19 +202,16 @@ class Composer extends Component
         $this->upstreamError = false;
         $this->submitting = true;
 
-        return $this->performAnalysisCall($api, $tokens);
+        return $this->performAnalysisCall($submitter, $tokens);
     }
 
-    private function performAnalysisCall(WorthlyApiClient $api, SecureTokenStorage $tokens): mixed
+    private function performAnalysisCall(AnalysisSubmitter $submitter, SecureTokenStorage $tokens): mixed
     {
         try {
             if ($this->image instanceof UploadedFile) {
-                $data = $this->postImage($api);
+                $data = $submitter->submitImage($this->image);
             } else {
-                $data = $api->post('/api/analyses', [
-                    'input_type' => 'text',
-                    'query' => $this->query,
-                ]);
+                $data = $submitter->submitText($this->query);
             }
         } catch (ValidationException $exception) {
             $this->submitting = false;
@@ -233,6 +230,16 @@ class Composer extends Component
             return null;
         } catch (UnauthorizedException) {
             return $this->handleSessionExpired($tokens);
+        } catch (\Throwable $e) {
+            Log::error('worthly.analysis.submit.exception', [
+                'message' => $e->getMessage(),
+                'exception' => $e::class,
+            ]);
+
+            $this->submitting = false;
+            $this->upstreamError = true;
+
+            return null;
         }
 
         $id = (int) ($data['id'] ?? 0);
@@ -300,72 +307,6 @@ class Composer extends Component
         }
 
         return null;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function postImage(WorthlyApiClient $api): array
-    {
-        $request = $api->pendingRequest()
-            ->attach(
-                'image',
-                file_get_contents($this->image->getRealPath()),
-                $this->image->getClientOriginalName(),
-            );
-
-        $response = $request->post(
-            $this->resolveUrl('/api/analyses'),
-            ['input_type' => 'image'],
-        );
-
-        return $this->unwrapResponse($response);
-    }
-
-    private function resolveUrl(string $path): string
-    {
-        $base = rtrim((string) config('services.worthly.base_url'), '/');
-
-        return $base.'/'.ltrim($path, '/');
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function unwrapResponse(Response $response): array
-    {
-        $status = $response->status();
-
-        if ($status >= 200 && $status < 300) {
-            /** @var array<string, mixed> $payload */
-            $payload = (array) ($response->json() ?? []);
-
-            if (array_key_exists('data', $payload) && is_array($payload['data'])) {
-                /** @var array<string, mixed> $data */
-                $data = $payload['data'];
-
-                return $data;
-            }
-
-            return $payload;
-        }
-
-        /** @var array<string, mixed> $payload */
-        $payload = (array) ($response->json() ?? []);
-        $message = is_string($payload['message'] ?? null) ? $payload['message'] : 'Worthly API error';
-
-        throw match ($status) {
-            401 => new UnauthorizedException($message, $status, $response, $payload),
-            422 => new ValidationException(
-                message: $message,
-                status: $status,
-                response: $response,
-                payload: $payload,
-                errors: is_array($payload['errors'] ?? null) ? $payload['errors'] : [],
-            ),
-            502 => new UpstreamFailureException($message, $status, $response, $payload),
-            default => new WorthlyApiException($message, $status, $response, $payload),
-        };
     }
 
     private function handleSessionExpired(SecureTokenStorage $tokens): mixed
